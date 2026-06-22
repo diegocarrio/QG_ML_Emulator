@@ -21,6 +21,8 @@ This project analyzes and compares the statistical distributions of Potential Vo
 ```
 QG_ML_Emulator/
 ├── QG_ML_Analysis.ipynb          # Main analysis notebook (all-in-one)
+├── gaussianity_diagnostics.py     # Reusable pointwise Gaussianity diagnostics
+├── test_gaussianity_diagnostics.py # Synthetic unittest suite
 ├── Prediction_Target_ens1000.nc  # Input data file (1000 ensemble members)
 ├── read_ens_sample.py            # Data loading utilities
 ├── README.md                     # This file
@@ -59,6 +61,14 @@ QG_ML_Emulator/
 - Contour plots showing Gaussian/non-Gaussian regions
 - Quantification of non-Gaussian points across the domain
 
+### 7. Comprehensive Pointwise Diagnostics
+- Mean, standard deviation, skewness, and Fisher excess kurtosis
+- Shapiro-Wilk and Anderson-Darling normality diagnostics
+- Anderson-Darling rejection masks at SciPy's available significance levels
+- Q-Q plot linear-fit R²
+- Configurable combined flag describing compatibility with Gaussianity
+- NumPy support and optional xarray DataArray/Dataset support
+
 ## Key Findings
 
 - **~48% of grid points** exhibit non-Gaussian ensemble distributions in the QG model
@@ -75,6 +85,8 @@ QG_ML_Emulator/
 1. **Install dependencies:**
    ```bash
    pip install numpy pandas matplotlib seaborn scipy netCDF4
+   # Optional, for labeled DataArray input/output:
+   pip install xarray
    ```
 
 2. **Open the Jupyter notebook:**
@@ -98,6 +110,29 @@ The notebook generates analysis outputs in the console and can save figures loca
 
 *Note: Figures are generated locally during notebook execution but not committed to the repository.*
 
+### Reusable pointwise API
+
+```python
+from gaussianity_diagnostics import compute_pointwise_gaussianity
+
+# Input shape: [ensemble_member, layer, y, x]
+result = compute_pointwise_gaussianity(
+    pv_qg,
+    member_dim=0,
+    alpha=0.05,
+    min_samples=20,
+)
+
+shapiro_map_layer1 = result["shapiro_pvalue"][0]
+anderson_mask_layer1 = result["anderson_reject_5"][0]
+```
+
+Run the synthetic tests with:
+
+```bash
+python -m unittest -v test_gaussianity_diagnostics.py
+```
+
 ## Methodology
 
 ### Normality Tests
@@ -107,7 +142,15 @@ The notebook generates analysis outputs in the console and can save figures loca
   - p-value < 0.05: Reject Gaussian hypothesis
   
 - **Skewness**: Measures asymmetry of the distribution
-- **Kurtosis**: Measures tail behavior relative to normal distribution
+- **Excess Kurtosis**: Measures tail behavior relative to a normal
+  distribution; a Gaussian has Fisher excess kurtosis 0
+- **Anderson-Darling Test**: Larger statistics indicate stronger departure
+  from normality and are compared with SciPy's critical values
+- **Q-Q R²**: Values close to 1 indicate near-linear agreement between
+  empirical and theoretical Gaussian quantiles
+
+The combined `gaussian_flag` means “compatible with Gaussianity under the
+configured diagnostics.” It is not proof that a distribution is Gaussian.
 
 ### Model Comparison
 
