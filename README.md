@@ -23,6 +23,8 @@ QG_ML_Emulator/
 ├── QG_ML_Analysis.ipynb          # Main analysis notebook (all-in-one)
 ├── gaussianity_diagnostics.py     # Reusable pointwise Gaussianity diagnostics
 ├── test_gaussianity_diagnostics.py # Synthetic unittest suite
+├── pca_gaussianity_diagnostics.py # PCA/EOF projection Gaussianity diagnostics
+├── test_pca_gaussianity_diagnostics.py # PCA synthetic unittest suite
 ├── Prediction_Target_ens1000.nc  # Input data file (1000 ensemble members)
 ├── read_ens_sample.py            # Data loading utilities
 ├── README.md                     # This file
@@ -68,6 +70,15 @@ QG_ML_Emulator/
 - Q-Q plot linear-fit R²
 - Configurable combined flag describing compatibility with Gaussianity
 - NumPy support and optional xarray DataArray/Dataset support
+
+### 8. PCA/EOF Projection Diagnostics
+- Economy-SVD PCA of flattened ensemble anomaly fields
+- Explained and cumulative variance by component
+- Anderson-Darling normality tests on PC score distributions
+- Skewness, Fisher excess kurtosis, and normal Q-Q R² by PC
+- Reconstructed EOF patterns in the original spatial shape
+- QG/ML or MPAS/MAPCast result comparison utilities
+- Human-readable summaries of the dominant ensemble subspace
 
 ## Key Findings
 
@@ -131,7 +142,33 @@ Run the synthetic tests with:
 
 ```bash
 python -m unittest -v test_gaussianity_diagnostics.py
+python -m unittest -v test_pca_gaussianity_diagnostics.py
 ```
+
+### PCA/EOF projection API
+
+```python
+from pca_gaussianity_diagnostics import (
+    compute_pca_projection_gaussianity,
+    summarize_pca_gaussianity,
+)
+
+pca_result = compute_pca_projection_gaussianity(
+    pv_qg[:, 0, :, :],
+    member_dim=0,
+    n_components=20,
+    alpha=0.05,
+    return_scores=True,
+    return_eofs=True,
+)
+
+summarize_pca_gaussianity(pca_result, n_leading=10)
+```
+
+Features with too many missing members are removed. Occasional NaNs in
+retained features are filled with the corresponding feature mean before the
+SVD. A rejected PC score provides evidence against multivariate Gaussianity
+along that projection; non-rejection is not proof of full Gaussianity.
 
 ## Methodology
 
